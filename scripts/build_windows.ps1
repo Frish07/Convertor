@@ -1,42 +1,38 @@
-param([string]$Python = 'python')
+param(
+    [Parameter(Mandatory)][string]$Toolchain
+)
 
 $ErrorActionPreference = 'Stop'
-$Python = (Get-Command $Python -CommandType Application).Source
-$previousConfigDir = $env:PYINSTALLER_CONFIG_DIR
+$Toolchain = (Resolve-Path -LiteralPath $Toolchain).Path
+$compiler = Join-Path $Toolchain 'bin/x86_64-w64-mingw32-clang++.exe'
+$resources = Join-Path $Toolchain 'bin/x86_64-w64-mingw32-windres.exe'
 Push-Location (Split-Path -Parent $PSScriptRoot)
 try {
-    $version = & $Python -c 'from convertor import VERSION; print(VERSION)'
-    if ($LASTEXITCODE -ne 0) { throw 'Cannot determine Convertor version.' }
-    & $Python -c 'import sysconfig; assert sysconfig.get_platform() == "win-amd64"'
-    if ($LASTEXITCODE -ne 0) { throw 'Use Windows x64 Python.' }
+    New-Item -ItemType Directory -Force build/v2, dist | Out-Null
+    Push-Location assets
+    try {
+        & $resources -O coff convertor.rc ../build/v2/convertor.o
+        if ($LASTEXITCODE -ne 0) { throw 'Windows resource compilation failed.' }
+    } finally {
+        Pop-Location
+    }
 
-    New-Item -ItemType Directory -Force build, dist | Out-Null
-    $env:PYINSTALLER_CONFIG_DIR = Join-Path (Get-Location) 'build/pyinstaller-cache'
-    & $Python -m PyInstaller --clean --noconfirm --windowed --onedir --name Convertor `
-        --distpath build/windows --workpath build/pyinstaller --specpath build main.py
-    if ($LASTEXITCODE -ne 0) { throw 'PyInstaller build failed.' }
+    $exe = 'build/v2/Convertor.exe'
+    & $compiler -std=c++20 -O2 -Wall -Wextra -Wpedantic -static -mwindows -municode `
+        -DUNICODE -D_UNICODE -DNOMINMAX -D_WIN32_WINNT=0x0A00 `
+        src/app.cpp src/canvas.cpp src/media.cpp build/v2/convertor.o -o $exe `
+        -lgdi32 -lmsimg32 -ldwmapi -lcomctl32 -lole32 -luuid -lshell32 -lwinhttp -lbcrypt
+    if ($LASTEXITCODE -ne 0) { throw 'C++ build failed.' }
 
-    $bundle = 'build/windows/Convertor'
-    $notices = Join-Path $bundle 'licenses'
-    New-Item -ItemType Directory -Force $notices | Out-Null
-    $pythonBase = & $Python -c 'import sys; print(sys.base_prefix)'
-    $openSslVersion = & $Python -c 'import ssl; print(ssl.OPENSSL_VERSION.split()[1])'
-    $tclVersion = & $Python -c 'import tkinter; print(tkinter.Tcl().eval("info patchlevel"))'
-    $tclTag = 'core-' + $tclVersion.Replace('.', '-')
-    Copy-Item -LiteralPath (Join-Path $pythonBase 'LICENSE.txt') -Destination "$notices/Python.txt"
-    Copy-Item -LiteralPath (Join-Path $pythonBase 'tcl/tk8.6/license.terms') -Destination "$notices/Tk.txt"
-    Invoke-WebRequest -UseBasicParsing `
-        -Uri "https://raw.githubusercontent.com/tcltk/tcl/$tclTag/license.terms" `
-        -OutFile "$notices/Tcl.txt"
-    Invoke-WebRequest -UseBasicParsing `
-        -Uri "https://raw.githubusercontent.com/openssl/openssl/openssl-$openSslVersion/LICENSE.txt" `
-        -OutFile "$notices/OpenSSL.txt"
-    Copy-Item -LiteralPath 'README.md' -Destination $bundle
-
+    $bundle = 'build/v2/package/Convertor'
+    New-Item -ItemType Directory -Force $bundle | Out-Null
+    Copy-Item -LiteralPath $exe, 'README.md' -Destination $bundle
+    Copy-Item -LiteralPath (Join-Path $Toolchain 'LICENSE.TXT') -Destination "$bundle/LLVM-MinGW.txt"
+    $version = (Get-Item -LiteralPath $exe).VersionInfo.ProductVersion
+    if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Missing executable version.' }
     $archive = "dist/Convertor-v$version-windows-x64.zip"
     Compress-Archive -LiteralPath $bundle -DestinationPath $archive -Force
     Get-FileHash -LiteralPath $archive -Algorithm SHA256
 } finally {
-    $env:PYINSTALLER_CONFIG_DIR = $previousConfigDir
     Pop-Location
 }
