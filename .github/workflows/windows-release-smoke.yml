@@ -6,6 +6,7 @@ on:
     paths:
       - .github/workflows/windows-release-smoke.yml
       - tests/check_release.ps1
+      - tests/check_windows.ps1
 
 permissions:
   contents: read
@@ -21,12 +22,28 @@ jobs:
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
+          ref: 1406ed87aef3e6773cf70d2a03f19ce94b0db899 # v2.0.0
+          path: released-source
+          persist-credentials: false
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          path: test-source
           persist-credentials: false
       - name: Download the released Windows ZIP
         run: |
           $archive = Join-Path $env:RUNNER_TEMP 'Convertor-v2.0.0-windows-x64.zip'
           $url = 'https://github.com/Frish07/Convertor/releases/download/v2.0.0/Convertor-v2.0.0-windows-x64.zip'
           curl.exe --fail --silent --show-error --location --retry 2 --output $archive $url
-      - name: Start Convertor and convert a sample using its FFmpeg download
+      - name: Start the released EXE and use its FFmpeg download
         run: |
-          .\tests\check_release.ps1 -Archive (Join-Path $env:RUNNER_TEMP 'Convertor-v2.0.0-windows-x64.zip')
+          $cache = .\test-source\tests\check_release.ps1 -Archive (Join-Path $env:RUNNER_TEMP 'Convertor-v2.0.0-windows-x64.zip')
+          "CONVERTOR_FFMPEG=$cache" >> $env:GITHUB_ENV
+      - name: Test conversion with the v2.0.0 engine and downloaded FFmpeg
+        run: |
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio/Installer/vswhere.exe'
+          $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vs) { throw 'The Windows runner has no Visual C++ compiler.' }
+          Import-Module (Join-Path $vs 'Common7/Tools/Microsoft.VisualStudio.DevShell.dll')
+          Enter-VsDevShell -VsInstallPath $vs -SkipAutomaticLocation -DevCmdArguments '-arch=x64 -host_arch=x64'
+          Copy-Item -LiteralPath '.\test-source\tests\check_windows.ps1' -Destination '.\released-source\tests\check_windows.ps1'
+          .\released-source\tests\check_windows.ps1 -UseMSVC -FFmpegDirectory $env:CONVERTOR_FFMPEG

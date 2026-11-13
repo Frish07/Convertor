@@ -1,11 +1,11 @@
 param(
-    [Parameter(Mandatory)][string]$Toolchain,
+    [string]$Toolchain,
     [Parameter(Mandatory)][string]$FFmpegDirectory,
-    [switch]$CheckDownload
+    [switch]$CheckDownload,
+    [switch]$UseMSVC
 )
 
 $ErrorActionPreference = 'Stop'
-$compiler = Join-Path (Resolve-Path -LiteralPath $Toolchain).Path 'bin/x86_64-w64-mingw32-clang++.exe'
 $ffmpegDir = (Resolve-Path -LiteralPath $FFmpegDirectory).Path
 $ffmpeg = Join-Path $ffmpegDir 'ffmpeg.exe'
 $ffprobe = Join-Path $ffmpegDir 'ffprobe.exe'
@@ -18,9 +18,24 @@ try {
     $outputs = Join-Path $root ('Outputs ' + [char]0x416)
     New-Item -ItemType Directory -Force $samples, $outputs | Out-Null
     $runner = Join-Path $root 'MediaTests.exe'
-    & $compiler -std=c++20 -O2 -Wall -Wextra -Wpedantic -static -municode -DNOMINMAX `
-        -D_WIN32_WINNT=0x0A00 -I src tests/media_tests.cpp src/media.cpp -o $runner `
-        -lole32 -lwinhttp -lbcrypt
+    if ($UseMSVC) {
+        $mediaTests = (Resolve-Path -LiteralPath 'tests/media_tests.cpp').Path
+        $mediaSource = (Resolve-Path -LiteralPath 'src/media.cpp').Path
+        $include = (Resolve-Path -LiteralPath 'src').Path
+        Push-Location $root
+        try {
+            & cl.exe /nologo /std:c++20 /utf-8 /EHsc /O2 /MT /DNOMINMAX /D_WIN32_WINNT=0x0A00 `
+                "/I$include" $mediaTests $mediaSource "/Fe:$runner" ole32.lib winhttp.lib bcrypt.lib
+        } finally {
+            Pop-Location
+        }
+    } else {
+        if (-not $Toolchain) { throw 'Specify -Toolchain or -UseMSVC.' }
+        $compiler = Join-Path (Resolve-Path -LiteralPath $Toolchain).Path 'bin/x86_64-w64-mingw32-clang++.exe'
+        & $compiler -std=c++20 -O2 -Wall -Wextra -Wpedantic -static -municode -DNOMINMAX `
+            -D_WIN32_WINNT=0x0A00 -I src tests/media_tests.cpp src/media.cpp -o $runner `
+            -lole32 -lwinhttp -lbcrypt
+    }
     if ($LASTEXITCODE -ne 0) { throw 'Test compilation failed.' }
 
     $env:LOCALAPPDATA = Join-Path $root 'appdata'
