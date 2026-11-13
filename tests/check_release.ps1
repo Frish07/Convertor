@@ -12,7 +12,6 @@ Add-Type -TypeDefinition @'
 using System;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
-using System.Text;
 
 public static class ConvertorWindow {
     [StructLayout(LayoutKind.Sequential)]
@@ -29,18 +28,19 @@ public static class ConvertorWindow {
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern IntPtr SendMessageTimeout(IntPtr window, uint message, IntPtr wParam, IntPtr lParam,
                                                     uint flags, uint timeout, out IntPtr result);
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern IntPtr GlobalAlloc(uint flags, UIntPtr bytes);
-    [DllImport("kernel32.dll", SetLastError = true)]
-    private static extern IntPtr GlobalLock(IntPtr memory);
-    [DllImport("kernel32.dll")]
-    private static extern bool GlobalUnlock(IntPtr memory);
-    [DllImport("kernel32.dll")]
-    private static extern IntPtr GlobalFree(IntPtr memory);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern bool PostMessage(IntPtr window, uint message, IntPtr wParam, IntPtr lParam);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern IntPtr SendMessageTimeout(IntPtr window, uint message, IntPtr wParam, string text,
+                                                    uint flags, uint timeout, out IntPtr result);
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetDlgItem(IntPtr dialog, int id);
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetParent(IntPtr child);
 
-    public static IntPtr Find(int pid) {
+    public static IntPtr Find(int pid, string className) {
         var window = IntPtr.Zero;
-        while ((window = FindWindowEx(IntPtr.Zero, window, "Convertor.Desktop", "Convertor")) != IntPtr.Zero) {
+        while ((window = FindWindowEx(IntPtr.Zero, window, className, null)) != IntPtr.Zero) {
             uint owner;
             GetWindowThreadProcessId(window, out owner);
             if (owner == pid) return window;
@@ -54,7 +54,7 @@ public static class ConvertorWindow {
             throw new Win32Exception(Marshal.GetLastWin32Error(), "Convertor did not handle message " + message);
     }
 
-    public static void Click(IntPtr window, int x, int y) {
+    public static void Click(IntPtr window, int x, int y, bool opensDialog = false) {
         // Rebuild the custom-painted controls before sending a click, including on a hidden test window.
         Send(window, 0x000f, IntPtr.Zero, IntPtr.Zero); // WM_PAINT
         Rect bounds;
@@ -62,24 +62,41 @@ public static class ConvertorWindow {
         if (!GetClientRect(window, out bounds) || dpi == 0) throw new InvalidOperationException("No client area");
         int pixelX = x < 0 ? bounds.Right + x * (int)dpi / 96 : x * (int)dpi / 96;
         int pixelY = y < 0 ? bounds.Bottom + y * (int)dpi / 96 : y * (int)dpi / 96;
-        Send(window, 0x0202, IntPtr.Zero, new IntPtr((pixelY << 16) | pixelX)); // WM_LBUTTONUP
+        var coordinates = new IntPtr((pixelY << 16) | pixelX);
+        if (opensDialog) {
+            if (!PostMessage(window, 0x0202, IntPtr.Zero, coordinates))
+                throw new Win32Exception(Marshal.GetLastWin32Error(), "Could not open the file picker");
+        } else {
+            Send(window, 0x0202, IntPtr.Zero, coordinates); // WM_LBUTTONUP
+        }
     }
 
-    public static void Drop(IntPtr window, string file) {
-        const int headerSize = 20;
-        var names = Encoding.Unicode.GetBytes(file + "\0\0");
-        var handle = GlobalAlloc(0x42, new UIntPtr((uint)(headerSize + names.Length)));
-        if (handle == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error());
-        var buffer = GlobalLock(handle);
-        if (buffer == IntPtr.Zero) {
-            GlobalFree(handle);
-            throw new Win32Exception(Marshal.GetLastWin32Error());
+    private static IntPtr FindChild(IntPtr parent, string className) {
+        var direct = FindWindowEx(parent, IntPtr.Zero, className, null);
+        if (direct != IntPtr.Zero) return direct;
+        var child = IntPtr.Zero;
+        while ((child = FindWindowEx(parent, child, null, null)) != IntPtr.Zero) {
+            var match = FindChild(child, className);
+            if (match != IntPtr.Zero) return match;
         }
-        Marshal.WriteInt32(buffer, 0, headerSize);
-        Marshal.WriteInt32(buffer, 16, 1); // DROPFILES.fWide
-        Marshal.Copy(names, 0, IntPtr.Add(buffer, headerSize), names.Length);
-        GlobalUnlock(handle);
-        Send(window, 0x0233, handle, IntPtr.Zero); // WM_DROPFILES, ownership passes to Convertor
+        return IntPtr.Zero;
+    }
+
+    public static bool ChooseFile(IntPtr dialog, string file) {
+        var combo = FindChild(dialog, "ComboBoxEx32");
+        if (combo == IntPtr.Zero) return false;
+        var edit = FindChild(combo, "Edit");
+        var open = GetDlgItem(dialog, 1); // IDOK
+        if (edit == IntPtr.Zero || open == IntPtr.Zero) return false;
+        IntPtr result;
+        if (SendMessageTimeout(edit, 0x000c, IntPtr.Zero, file, 2, 3000, out result) == IntPtr.Zero ||
+            result == IntPtr.Zero)
+            throw new Win32Exception(Marshal.GetLastWin32Error(), "Could not enter the sample path");
+        // Notify the file-name combo so the picker updates its internal value.
+        Send(GetParent(combo), 0x0111, new IntPtr((5 << 16) | 1148), combo); // CBN_EDITCHANGE
+        if (!PostMessage(open, 0x00f5, IntPtr.Zero, IntPtr.Zero)) // BM_CLICK
+            throw new Win32Exception(Marshal.GetLastWin32Error(), "Could not confirm the sample file");
+        return true;
     }
 }
 '@
@@ -141,24 +158,25 @@ $process = $null
 try {
     $process = Start-Process -FilePath $app -WorkingDirectory (Split-Path $app) -WindowStyle Hidden -PassThru
     if (-not $process.WaitForInputIdle(15000)) { throw 'Convertor did not start its Windows message loop.' }
-    $window = Wait-For { $handle = [ConvertorWindow]::Find($process.Id); if ($handle -ne [IntPtr]::Zero) { $handle } } 'the Convertor window'
+    $window = Wait-For { $handle = [ConvertorWindow]::Find($process.Id, 'Convertor.Desktop'); if ($handle -ne [IntPtr]::Zero) { $handle } } 'the Convertor window'
     Write-Host 'PASS: released Convertor.exe opened with only Windows system directories on PATH and no FFmpeg cache.'
-
-    [ConvertorWindow]::Click($window, 433, 32) # Audio tab
-    [ConvertorWindow]::Drop($window, $inputFile)
-    [ConvertorWindow]::Click($window, -94, -34) # Convert
-    if (Test-Path -LiteralPath $outputFile) { throw 'Conversion succeeded unexpectedly before FFmpeg was available.' }
 
     [ConvertorWindow]::Click($window, -173, 32) # Download FFmpeg
     $null = Wait-For { (Test-Path "$cache/ffmpeg.exe") -and (Test-Path "$cache/ffprobe.exe") } 'Convertor to download FFmpeg' 180
     Write-Host 'PASS: Convertor downloaded and extracted FFmpeg into its own profile.'
 
+    [ConvertorWindow]::Click($window, 433, 32) # Audio tab
     $null = Wait-For {
-        if (Test-Path -LiteralPath $outputFile) { return $true }
-        [ConvertorWindow]::Drop($window, $inputFile)
-        [ConvertorWindow]::Click($window, -94, -34)
+        $dialog = [ConvertorWindow]::Find($process.Id, '#32770')
+        if ($dialog -ne [IntPtr]::Zero) { return [ConvertorWindow]::ChooseFile($dialog, $inputFile) }
+        [ConvertorWindow]::Click($window, -263, -34, $true) # Add files
         return $false
-    } 'WAV-to-MP3 conversion through the Convertor window' 30
+    } 'the file picker to accept the WAV sample'
+    $null = Wait-For { [ConvertorWindow]::Find($process.Id, '#32770') -eq [IntPtr]::Zero } 'the file picker to close'
+    Write-Host 'PASS: the native file picker accepted the WAV sample.'
+
+    [ConvertorWindow]::Click($window, -94, -34) # Convert
+    $null = Wait-For { Test-Path -LiteralPath $outputFile } 'WAV-to-MP3 conversion through the Convertor window' 30
 
     $codec = & "$cache/ffprobe.exe" -v error -show_entries stream=codec_name -of csv=p=0 $outputFile
     if ($LASTEXITCODE -ne 0 -or $codec -ne 'mp3') { throw "Output is not MP3 ($codec)." }
