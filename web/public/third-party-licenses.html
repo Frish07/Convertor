@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Third-party licenses · Convertor Web</title>
+  <link rel="icon" href="./convertor.ico">
+  <style>
+    :root { color-scheme: dark light; font-family: system-ui, sans-serif; }
+    body { width: min(100% - 3rem, 740px); margin: 3rem auto; line-height: 1.65; }
+    a { color: LinkText; overflow-wrap: anywhere; }
+  </style>
+</head>
+<body>
+  <a href="./">← Convertor Web</a>
+  <h1>Third-party licenses</h1>
+  <p>Read the <a href="./third-party-licenses.txt">license and copyright notices for the JavaScript bundles and Inter font</a>.</p>
+  <h2>FFmpeg WebAssembly</h2>
+  <p>Convertor Web loads the upstream single-threaded <code>@ffmpeg/core@0.12.10</code> from jsDelivr with integrity checks. This binary is distributed by the npm package provider under GPL-2.0-or-later. The JavaScript wrapper <code>@ffmpeg/ffmpeg@0.12.15</code> is MIT licensed.</p>
+  <ul>
+    <li><a href="https://github.com/ffmpegwasm/ffmpeg.wasm/releases/tag/v12.15">Upstream release for core 0.12.10 and wrapper 0.12.15</a></li>
+    <li><a href="https://github.com/ffmpegwasm/ffmpeg.wasm/tree/71aa99d37c02a7b4c435275ca9ef50e612f6efa1">Corresponding upstream source and build scripts</a></li>
+    <li><a href="https://github.com/ffmpegwasm/ffmpeg.wasm/blob/71aa99d37c02a7b4c435275ca9ef50e612f6efa1/Dockerfile">Dockerfile with FFmpeg and codec library source revisions</a></li>
+    <li><a href="https://www.gnu.org/licenses/old-licenses/gpl-2.0.html">GNU General Public License, version 2</a></li>
+  </ul>
+  <h2 lang="ru">Лицензии сторонних компонентов</h2>
+  <p lang="ru">По ссылкам выше доступны полные тексты лицензий и уведомлений, исходный код FFmpeg.wasm и скрипты его сборки.</p>
+</body>
+</html>
