@@ -1,26 +1,28 @@
 # Convertor
 
-- [Convertor Web](https://frish07.github.io/Convertor/) — браузерный конвертер с локальной обработкой файлов.
-- [Convertor Desktop](https://github.com/Frish07/Convertor/releases/latest) — приложение для Windows x64.
+**English** | [Русский](README.ru.md)
+
+- [Convertor Web](https://frish07.github.io/Convertor/) — a browser converter that processes files locally.
+- [Convertor Desktop](https://github.com/Frish07/Convertor/releases/latest) — a Windows x64 application.
 
 ## Convertor Web
 
-Перетащите файлы на нужную вкладку, настройте результат для каждого файла и запустите обработку строки или всей очереди. Результаты можно скачать по одному или в ZIP. Выбор языка (RU/EN) и темы сохраняется в браузере.
+Drag files onto the appropriate tab, configure the output for each file, and process individual files or the entire queue. Download results individually or as a ZIP archive. Your language (RU/EN) and theme preferences are saved in the browser.
 
-| Вкладка | Входные файлы | Результат и настройки |
+| Tab | Input files | Output and settings |
 | --- | --- | --- |
-| Изображения | PNG, JPEG, WebP, BMP | PNG, JPG, WebP, BMP. Размер, пропорции, качество JPEG/WebP и предпросмотр. PNG и WebP сохраняют прозрачность. JPG и 24-битный BMP используют белый фон. |
-| Аудио | MP3, WAV, OGG/OGA, FLAC, M4A, AAC, Opus, AIFF и видео из списка ниже | MP3, WAV (PCM), OGG (Vorbis), FLAC, M4A (AAC), Opus. Битрейт для форматов с потерями, режим качества для MP3 и OGG, уровень сжатия для FLAC. |
-| Видео | MP4, WebM, MKV, MOV, M4V, AVI, OGV | MP4 (H.264/AAC), WebM (VP8/Opus) и извлечение звука во все аудиоформаты из таблицы. Высота до 1080p, 720p или 480p с сохранением пропорций и оригинальное разрешение. Совместимые потоки можно копировать без перекодирования. |
-| PDF | PDF | Объединение в порядке очереди, разделение по страницам, извлечение, удаление и перестановка страниц. |
+| Images | PNG, JPEG, WebP, BMP | PNG, JPG, WebP, BMP. Resize, preserve aspect ratio, adjust JPEG/WebP quality, and preview files. PNG and WebP preserve transparency. JPG and 24-bit BMP use a white background. |
+| Audio | MP3, WAV, OGG/OGA, FLAC, M4A, AAC, Opus, AIFF, and the video formats listed below | MP3, WAV (PCM), OGG (Vorbis), FLAC, M4A (AAC), Opus. Bitrate settings for lossy formats, quality mode for MP3 and OGG, and compression level for FLAC. |
+| Video | MP4, WebM, MKV, MOV, M4V, AVI, OGV | MP4 (H.264/AAC), WebM (VP8/Opus), and audio extraction into any audio output format in this table. Keep the original resolution or limit the height to 1080p, 720p, or 480p while preserving the aspect ratio. Compatible streams can be copied without re-encoding. |
+| PDF | PDF | Merge in queue order, split into pages, extract pages, delete pages, and reorder pages. |
 
-Пользовательские файлы и результаты остаются в памяти вкладки. При первой операции с аудио или видео браузер скачивает однопоточный FFmpeg.wasm 0.12.10 (около 32 МБ) с jsDelivr. Приложение проверяет целостность JavaScript и WASM. После инициализации этот движок повторно используется в текущей вкладке. [Лицензии и исходники зависимостей](https://frish07.github.io/Convertor/third-party-licenses.html)
+User files and results stay in the browser tab's memory. The first audio or video operation downloads single-threaded FFmpeg.wasm 0.12.10 (about 32 MB) from jsDelivr. The application verifies the integrity of the JavaScript and WASM files. Once initialized, the engine is reused in the current tab. [Dependency licenses and source code](https://frish07.github.io/Convertor/third-party-licenses.html)
 
-Лимит на файл составляет 256 МиБ для медиа и 100 МиБ для изображений и PDF. Потребление памяти зависит от разрешения, длительности и браузера, поэтому обработка может завершиться ошибкой и на файле меньшего размера. Декодирование зависит от кодеков внутри контейнера, а встроенный предпросмотр использует возможности браузера. Защищённые PDF требуют предварительной расшифровки. При копировании страниц PDF интерактивные формы, подписи и закладки могут потеряться.
+The per-file limit is 256 MiB for audio and video and 100 MiB for images and PDFs. Memory usage depends on resolution, duration, and the browser, so processing can fail even for smaller files. Decoding depends on the codecs inside the container, while built-in previews use the browser's playback capabilities. Encrypted PDFs must be decrypted before processing. Copying PDF pages may discard interactive forms, signatures, and bookmarks.
 
-### Запуск и сборка веб-версии
+### Running and building the web version
 
-Используйте Node.js 24 LTS. После запуска Vite откройте адрес, который он выведет, с путём `/Convertor/`.
+Use Node.js 24 LTS. After starting Vite, open the address it prints with the `/Convertor/` path.
 
 ```sh
 cd web
@@ -28,7 +30,7 @@ npm ci
 npm run dev
 ```
 
-Для проверки типов, сборки и браузерных тестов выполните следующие команды.
+Run the following commands for type checking, a production build, and browser tests.
 
 ```sh
 npm run check
@@ -37,47 +39,47 @@ npx playwright install chromium
 npm test
 ```
 
-Статическая сборка находится в `web/dist`. Workflow `Convertor Web` проверяет её в Chromium и публикует на GitHub Pages при изменениях веб-части в `main`. Для первоначальной настройки выберите **GitHub Actions** в **Settings → Pages → Build and deployment → Source**, затем запустите workflow. [Настройка источника GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
+The static build is written to `web/dist`. The `Convertor Web` workflow tests it in Chromium and deploys it to GitHub Pages when the web files change on `main`. For initial setup, select **GitHub Actions** under **Settings → Pages → Build and deployment → Source**, then run the workflow. [Configuring a GitHub Pages publishing source](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
 
 ## Convertor Desktop
 
-Десктопный конвертер видео, изображений и аудио для Windows 10 (22H2) и 11 на x64. Интерфейс и управление обработкой написаны на C++20 с Win32 API. FFmpeg работает в отдельном процессе, а совместимые потоки приложение копирует без перекодирования.
+A desktop video, image, and audio converter for Windows 10 (22H2) and Windows 11 on x64. The interface and processing management are written in C++20 using the Win32 API. FFmpeg runs in a separate process, and compatible streams are copied without re-encoding.
 
-## Запуск
+## Getting started
 
-1. Скачайте архив для Windows x64 из [Releases](https://github.com/Frish07/Convertor/releases/latest).
-2. Распакуйте архив целиком и запустите `Convertor.exe`.
-3. Если приложение предложит скачать FFmpeg, нажмите **Скачать FFmpeg**. Загрузка (~110 МБ) нужна один раз. Приложение проверяет SHA-256 архива и сохраняет движок в локальный профиль Windows. После этого файлы конвертируются офлайн.
-4. Выберите вкладку и добавьте файлы через диалог или перетащите их в окно. Задайте формат для всей очереди в верхней карточке или для отдельного файла в его строке. Нажмите **Конвертировать**.
+1. Download the Windows x64 archive from [Releases](https://github.com/Frish07/Convertor/releases/latest).
+2. Extract the entire archive and run `Convertor.exe`.
+3. If prompted to download FFmpeg, click **Скачать FFmpeg** (Download FFmpeg). The download (~110 MB) is required once. The application verifies the archive's SHA-256 checksum and saves the engine in your local Windows profile. File conversion then works offline.
+4. Select a tab and add files using the file picker or by dragging them into the window. Choose the output format for the entire queue in the top card or for an individual file in its row. Click **Конвертировать** (Convert).
 
-По умолчанию результат сохраняется рядом с исходным файлом. Папку можно изменить на каждой вкладке. При совпадении имени Convertor добавит номер, например `ролик (2).mp4`. Щелчок по имени файла в очереди открывает результат или показывает детали ошибки. Отмена прерывает текущую операцию и сохраняет результаты уже завершённых файлов.
+By default, results are saved alongside the source files. You can choose an output folder on each tab. If a filename already exists, Convertor adds a number, such as `clip (2).mp4`. Click a filename in the queue to open its result or view error details. Cancelling stops the current operation and keeps the results of files that have already finished.
 
-## Форматы результата
+## Output formats
 
-| Вкладка | Выходные форматы | Примеры |
+| Tab | Output formats | Examples |
 | --- | --- | --- |
-| Видео | MP4, MKV, WebM, MOV и все аудиоформаты | MKV → MP4, MP4 → MP3 |
-| Изображения | PNG, JPG, WebP, BMP, TIFF | WebP → PNG |
-| Аудио | MP3, WAV, FLAC, M4A, OGG, Opus, AAC | OGG → MP3 |
+| Video | MP4, MKV, WebM, MOV, and all audio formats | MKV → MP4, MP4 → MP3 |
+| Images | PNG, JPG, WebP, BMP, TIFF | WebP → PNG |
+| Audio | MP3, WAV, FLAC, M4A, OGG, Opus, AAC | OGG → MP3 |
 
-Для видео используется первый видеопоток и первая аудиодорожка. При извлечении аудио сохраняется первая аудиодорожка. Вкладка изображений записывает один кадр.
+Video conversion uses the first video stream and the first audio track. Audio extraction keeps the first audio track. The Images tab writes a single frame.
 
-Convertor использует установленный `ffmpeg` и `ffprobe` из PATH, из папки приложения или из её подпапки `ffmpeg/bin`. Встроенная кнопка скачивает [FFmpeg Essentials для Windows](https://github.com/GyanD/codexffmpeg/releases/tag/9.0.2) от Gyan Doshi (GPLv3). [Исходный код FFmpeg для этой сборки](https://github.com/FFmpeg/FFmpeg/commit/946fcce07b).
+Convertor uses `ffmpeg` and `ffprobe` from PATH, the application folder, or its `ffmpeg/bin` subfolder. The built-in download button retrieves [FFmpeg Essentials for Windows](https://github.com/GyanD/codexffmpeg/releases/tag/9.0.2) by Gyan Doshi (GPLv3). [FFmpeg source code for this build](https://github.com/FFmpeg/FFmpeg/commit/946fcce07b)
 
-## Сборка и проверка
+## Building and testing
 
-Распакуйте [LLVM-MinGW для Windows x64 с UCRT](https://github.com/mstorsjo/llvm-mingw/releases/tag/20260908). Передайте путь к папке компилятора скрипту сборки.
+Extract [LLVM-MinGW for Windows x64 with UCRT](https://github.com/mstorsjo/llvm-mingw/releases/tag/20260908). Pass the path to the toolchain folder to the build script.
 
 ```powershell
 .\scripts\build_windows.ps1 -Toolchain 'C:\dev\llvm-mingw-20260908-ucrt-x86_64'
 ```
 
-Исполняемый файл появится в `build/v2`, архив для публикации — в `dist`.
+The executable is written to `build/v2`, and the release archive is written to `dist`.
 
-Для интеграционной проверки укажите папку с `ffmpeg.exe` и `ffprobe.exe` из FFmpeg Essentials.
+For integration tests, provide the folder containing `ffmpeg.exe` and `ffprobe.exe` from FFmpeg Essentials.
 
 ```powershell
 .\tests\check_windows.ps1 -Toolchain 'C:\dev\llvm-mingw-20260908-ucrt-x86_64' -FFmpegDirectory 'C:\dev\ffmpeg\bin'
 ```
 
-Тесты генерируют медиафайлы и проверяют все выходные форматы, извлечение звука, прозрачность, сохранение оригинала и отмену. Параметр `-CheckDownload` также проверяет встроенную загрузку FFmpeg в отдельную тестовую папку.
+The tests generate media files and check all output formats, audio extraction, transparency, preservation of the source file, and cancellation. The `-CheckDownload` flag also tests the built-in FFmpeg download in a separate test folder.
